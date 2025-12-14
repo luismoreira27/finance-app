@@ -1,3 +1,4 @@
-*.db
+finance.db
+credentials.db
 finance-venv
 frontend/data
