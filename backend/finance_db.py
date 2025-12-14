@@ -8,12 +8,3 @@ SessionLocal = sessionmaker(autocommit = False, autoflush = False, bind = engine
 
 Base_finance = declarative_base()
 metadata = MetaData()
-
-class Transaction(Base_finance):
-    __tablename__ = "transactions"
-    
-    id = Column(Integer, primary_key = True)
-    date = Column(String)
-    category = Column(String)
-    amount = Column(Float)
-    note = Column(String)

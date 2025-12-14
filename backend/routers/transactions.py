@@ -1,7 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from backend.finance_db import SessionLocal
-from pydantic import BaseModel
+from backend.models import TransactionModel
+from backend.schemas import (
+    TransactionSchema,
+    TransactionCreate,
+    TransactionUpdate
+)
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -13,48 +19,41 @@ def get_db():
         db.close()
 
 
-class TransactionBase(BaseModel):
-    date : str
-    category : str
-    amount : float
-    note : str | None = None
-
-
-class TransactionCreate(TransactionBase):
-    pass
-
-
-class Transaction(TransactionBase):
-    id: int
-
-    class Config:
-        orm_mode = True
-
-
-@router.get("/", response_model=list[Transaction])
-def get_all(start_date: str, end_date: str, category: str, db: Session = Depends(get_db)):
-    transactions = Session.query(Transaction).all()
-    if start_date:
-        transactions = [t for t in transactions if t.date >= start_date]
-    if end_date:
-        transactions = [t for t in transactions if t.date <= end_date]
-    if category:
-        transactions = [t for t in transactions if t.category.lower() == category.lower()]
+@router.get("/", response_model=list[TransactionSchema])
+def get_all(db: Session = Depends(get_db)):
+    transactions = db.query(TransactionModel).all()
 
     return transactions
 
-@router.post("/", response_model = Transaction)
-def create(t: TransactionCreate, db: Session = Depends(get_db)):
-    db_t = Transaction(**TransactionCreate.dict())
+@router.post("/", response_model = TransactionSchema)
+def create(t: TransactionCreate, db: Session = Depends(get_db)):    
+    db_t = TransactionModel(**t.model_dump())
     db.add(db_t)
     db.commit()
     db.refresh(db_t)
 
     return db_t
 
-@router.delete("({transaction_id})")
+@router.put("/{transaction_id}", response_model = TransactionSchema)
+def update(transaction_id: int, 
+           update_data: TransactionUpdate, 
+           db: Session = Depends(get_db)
+           ):
+    t = db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
+    
+    if not t:
+        raise HTTPException(status_code = 404, detail = "Transaction not found!")
+    
+    for key, value in update_data.model_dump().items():
+        setattr(t, key, value)
+
+    db.commit()
+    db.refresh(t)
+    return t
+
+@router.delete("/{transaction_id}")
 def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
-    t = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    t = db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
     if t:
         db.delete(t)
         db.commit()

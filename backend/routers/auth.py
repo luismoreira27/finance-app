@@ -50,7 +50,7 @@ async def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code = 400, detail = "Invalid username or password")
 
-    if not pwd_context.verify(data.password, user.password):
+    if data.password != user.password:
         raise HTTPException(status_code= 400, detail = "Inavalid username or password")
     
     return {"message": "Login Sucessful!", "username": user.username}

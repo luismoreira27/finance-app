@@ -1,0 +1,3 @@
+*.db
+finance-venv
+frontend/data
