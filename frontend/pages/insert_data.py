@@ -86,6 +86,7 @@ with tab1:
                         requests.post(f"{API_URL}/transactions/", json = payload)
 
                     st.session_state.data_uploaded = True
+                    st.cache_data.clear()
                     st.success("CSV uploaded sucessfully!")
                     st.rerun()
 
@@ -162,24 +163,54 @@ with tab3:
             width = "stretch",
             hide_index = True,
             on_select = "rerun",
-            selection_mode = "single-row",
+            selection_mode = "multi-row",
             key = "delete_table"
         )
 
         row = event.selection.rows
         filtered_df = df.iloc[row]
 
-        if st.button("Delete Row"):
+        if st.button("Delete Rows"):
             if filtered_df.empty:
-                st.info("Select a Row")
+                st.info("Select at least a Row")
             else:
-                transaction_id = int(filtered_df["id"].iloc[0])
+                transaction_ids = filtered_df["id"].to_list()
+                payload = {
+                    "transaction_ids": transaction_ids
+                }
+
                 res = requests.delete(
-                    f"{API_URL}/transactions/{transaction_id}"
+                    f"{API_URL}/transactions/bulk/",
+                    json = payload
                 )
 
                 if res.status_code == 200:
-                    st.success("Row successfully deleted")
+                    st.success("Rows successfully deleted")
                     st.cache_data.clear()
                 else:
                     st.error(f"Delete failed: {res.text}")
+
+        
+        if st.button("Delete Table"):
+            st.session_state.confirm_delete = True
+
+        if st.session_state.get("confirm_delete"):
+            st.warning("Are you sure you want to delete these transactions?")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Yes, delete!"):
+                    res = requests.delete(
+                        f"{API_URL}/transactions/all"
+                    )
+
+                    if res.status_code == 200:
+                        st.success("Transactions deleted")
+                        st.cache_data.clear()
+                        st.session_state.confirm_delete = False
+                    else:
+                        st.error(f"Delete failed: {res.text}")
+
+            with col2:
+                if st.button("Cancel"):
+                    st.session_state.confirm_delete = False

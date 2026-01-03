@@ -6,7 +6,8 @@ from backend.models import TransactionModel
 from backend.schemas import (
     TransactionSchema,
     TransactionCreate,
-    TransactionUpdate
+    TransactionUpdate,
+    DeleteTransactionsRequest
 )
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -51,13 +52,27 @@ def update(transaction_id: int,
     db.refresh(t)
     return t
 
-@router.delete("/{transaction_id}")
-def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
-    t = db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
-    if t:
-        db.delete(t)
-        db.commit()
+@router.delete("/bulk")
+def delete_transaction(payload: DeleteTransactionsRequest, db: Session = Depends(get_db)):
+    deleted = (
+        db.query(TransactionModel)
+        .filter(TransactionModel.id.in_(payload.transaction_ids))
+        .delete(synchronize_session = False)
+    )
+    db.commit()
+
+    if deleted == 0:
+        raise HTTPException(status_code = 404, detail = "No transactions found!")
     
-    if not t:
-        raise HTTPException(status_code = 404, detail = "Transaction not found!")
-    return {"message": "Transaction deleted!"}
+    return {"message": f"Deleted {deleted} transactions"}
+
+
+@router.delete("/all")
+def delete_all_transactions(db: Session = Depends(get_db)):
+    deleted = db.query(TransactionModel).delete()
+    db.commit()
+
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail="No transactions to delete")
+
+    return {"message": f"Deleted {deleted} transactions"}

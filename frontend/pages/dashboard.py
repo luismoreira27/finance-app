@@ -47,40 +47,56 @@ if not df.empty:
         (df["category"].isin(category_filter))
     ]
 
+tab1, tab2, tab3 = st.tabs(["Spent", "Saved", "Invested"])
 
-if df.empty:
-    st.info("No data available.")
-else:
-    savings= df[df["category"] == "Savings"]
-    saved = savings["amount"].sum()
-    spent = df[(df["category"] != "Savings") & (df["category"] != "Salary")]
-    spent["month"] = spent["date"].dt.month
-    spent_month = spent.groupby("month")["amount"].sum()
-    month_mean = spent_month.mean()
-    salary = df[df["category"] == "Salary"]
-    print(salary)
-    salary_mean = salary["amount"].mean()
+with tab1:
+    if df.empty:
+        st.info("No data available.")
+    else:
+        spent = df[(df["category"] != "Savings") & (df["category"] != "Salary")]
+        spent["month"] = spent["date"].dt.month
+        spent_month = spent.groupby("month")["amount"].sum()
+        month_mean = spent_month.mean()
+        biggest_expense = spent["amount"].max()
+        most_common = spent.groupby("category")["amount"].sum()
+    
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Biggest Expense", f"€{biggest_expense:,.2f}")
+        col2.metric("Average Spending per Month", f"€{month_mean:,.2f}")
+        col3.metric("Most Common Expenses Category", f"{most_common.idxmax()}")
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Savings", f"€{saved:,.2f}")
-    col2.metric("Average Spending per Month", f"€{month_mean:,.2f}")
-    col3.metric("Average Salary", f"€{salary_mean:,.2f}")
+        st.subheader("Spending Over Time")
 
-    st.subheader("Spending Over Time")
+        fig1 = px.line(spent, x = "date", y = "amount",
+                            title = "Daily Spending Trend")
+        st.plotly_chart(fig1, use_container_width = True)
 
-    fig1 = px.line(spent, x = "date", y = "amount",
-                        title = "Daily Spending Trend")
-    st.plotly_chart(fig1, use_container_width = True)
+        st.subheader("Spending by Category")
 
-    st.subheader("Spending by Category")
+        fig2 = px.bar(spent.groupby("category",  as_index = False)["amount"].sum(),
+                        x = "category", y = "amount",
+                        title = "Total Amount per Category")
+        st.plotly_chart(fig2, use_container_width = True)
 
-    fig2 = px.bar(spent.groupby("category",  as_index = False)["amount"].sum(),
-                    x = "category", y = "amount",
-                    title = "Total Amount per Category")
-    st.plotly_chart(fig2, use_container_width = True)
+        st.subheader("Category Breakdown")
 
-    st.subheader("Category Breakdown")
+        fig3 = px.pie(spent, names = "category", values = "amount",
+                        title = "Spending Distribution")
+        st.plotly_chart(fig3, use_container_width = True)
 
-    fig3 = px.pie(spent, names = "category", values = "amount",
-                    title = "Spending Distribution")
-    st.plotly_chart(fig3, use_container_width = True)
+with tab2:
+    if df.empty:
+        st.info("No data available.")
+    else:
+        savings= df[df["category"] == "Savings"]
+        saved = savings["amount"].sum()
+        salary = df[df["category"] == "Salary"]
+        salary_mean = salary["amount"].mean()
+        final_salary = salary["amount"].sum()
+        final_spent = spent["amount"].sum()
+        net_worth = final_salary - final_spent
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Savings", f"€{saved:,.2f}")
+        col2.metric("Current Net Worth", f"€{net_worth:,.2f}")
+        col3.metric("Average Salary", f"€{salary_mean:,.2f}")

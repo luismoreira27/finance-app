@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import List
 
 class TransactionBase(BaseModel):
     date : str
@@ -18,3 +19,6 @@ class TransactionSchema(TransactionBase):
 
     class Config:
         from_attributes = True
+
+class DeleteTransactionsRequest(BaseModel):
+    transaction_ids: List[int]
