@@ -44,7 +44,7 @@ def update(transaction_id: int,
     if not t:
         raise HTTPException(status_code = 404, detail = "Transaction not found!")
     
-    for key, value in update_data.model_dump().items():
+    for key, value in update_data.model_dump(exclude_unset = True).items():
         setattr(t, key, value)
 
     db.commit()

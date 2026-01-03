@@ -14,7 +14,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 st.title("Home Page")
 
-if st.button("Upload Data"):
+if st.button("Data"):
     st.switch_page("pages/insert_data.py")
 
 if st.button("Dashboard"):

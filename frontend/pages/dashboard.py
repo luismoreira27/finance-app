@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import requests
+from utils import load_data
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -19,14 +19,6 @@ st.title("Finance Dashboard")
 
 if st.button("Home"):
     st.switch_page("pages/home.py")
-
-def load_data():
-    r = requests.get(f"{API_URL}/transactions/")
-    if r.status_code != 200:
-        st.error("Backend not running!")
-        return pd.DataFrame()
-    return pd.DataFrame(r.json())
-
 
 df = load_data()
 
@@ -55,53 +47,40 @@ if not df.empty:
         (df["category"].isin(category_filter))
     ]
 
-tab1, tab2 = st.tabs([
-    "📊 Plotly Charts",
-    "🧮 Summary",
-])
 
-with tab1:
-    if df.empty:
-        st.info("No data available.")
-    else:
-        st.subheader("Spending Over Time")
+if df.empty:
+    st.info("No data available.")
+else:
+    savings= df[df["category"] == "Savings"]
+    saved = savings["amount"].sum()
+    spent = df[(df["category"] != "Savings") & (df["category"] != "Salary")]
+    spent["month"] = spent["date"].dt.month
+    spent_month = spent.groupby("month")["amount"].sum()
+    month_mean = spent_month.mean()
+    salary = df[df["category"] == "Salary"]
+    print(salary)
+    salary_mean = salary["amount"].mean()
 
-        fig1 = px.scatter(df, x = "date", y = "amount",
-                          title = "Daily Spending Trend")
-        st.plotly_chart(fig1, use_container_width = True)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Savings", f"€{saved:,.2f}")
+    col2.metric("Average Spending per Month", f"€{month_mean:,.2f}")
+    col3.metric("Average Salary", f"€{salary_mean:,.2f}")
 
-        st.subheader("Spending by Category")
+    st.subheader("Spending Over Time")
 
-        fig2 = px.bar(df.groupby("category",  as_index = False)["amount"].sum(),
-                      x = "category", y = "amount",
-                      title = "Total Amount per Category")
-        st.plotly_chart(fig2, use_container_width = True)
+    fig1 = px.line(spent, x = "date", y = "amount",
+                        title = "Daily Spending Trend")
+    st.plotly_chart(fig1, use_container_width = True)
 
-        st.subheader("Category Breakdown")
+    st.subheader("Spending by Category")
 
-        fig3 = px.pie(df, names = "category", values = "amount",
-                      title = "Spending Distribution")
-        st.plotly_chart(fig3, use_container_width = True)
+    fig2 = px.bar(spent.groupby("category",  as_index = False)["amount"].sum(),
+                    x = "category", y = "amount",
+                    title = "Total Amount per Category")
+    st.plotly_chart(fig2, use_container_width = True)
 
-        st.subheader("Category Tree")
+    st.subheader("Category Breakdown")
 
-        fig4 = px.treemap(df, path = ["category"], values = "amount",
-                          title = "Category Tree Map")
-        st.plotly_chart(fig4, use_container_width = True)
-
-with tab2:
-    if df.empty:
-        st.info("No data available.")
-    else:
-        total = df["amount"].sum()
-        avg = df["amount"].mean()
-        max_expense = df["amount"].max()
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Spent", f"${total:,.2f}")
-        col2.metric("Average Transaction", f"${avg:,.2f}")
-        col3.metric("Largest Transaction", f"${max_expense:,.2f}")
-
-        st.write("### Transactions per Category")
-        category_table = df.groupby("category")["amount"].sum()
-        st.table(category_table)
+    fig3 = px.pie(spent, names = "category", values = "amount",
+                    title = "Spending Distribution")
+    st.plotly_chart(fig3, use_container_width = True)
